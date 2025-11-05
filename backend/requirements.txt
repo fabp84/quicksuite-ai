@@ -4,3 +4,5 @@ rembg
 pillow
 pdfplumber
 pytesseract
+
+onnxruntime
