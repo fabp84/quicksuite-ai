@@ -1,11 +1,15 @@
+'use client';
+
 export default function Pricing() {
   async function handleCheckout() {
-    const res = await fetch("/create-checkout-session", { method: "POST" });
+    const res = await fetch('/create-checkout-session', { method: 'POST' });
     const data = await res.json();
     if (data.url) {
-      window.location.href = data.url;
+      if (typeof window !== 'undefined') {
+        window.location.href = data.url;
+      }
     } else {
-      alert("Error creating checkout session");
+      alert('Error creating checkout session');
     }
   }
 
@@ -16,7 +20,9 @@ export default function Pricing() {
       <div className="pricing-card">
         <h2 className="text-2xl font-semibold mb-2">Standard Plan</h2>
         <p className="mb-3">$9/month – Access to all micro-tools</p>
-        <button onClick={handleCheckout} className="btn-primary">Subscribe</button>
+        <button onClick={handleCheckout} className="btn-primary">
+          Subscribe
+        </button>
       </div>
     </main>
   );
