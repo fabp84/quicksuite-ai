@@ -5,6 +5,10 @@ from PIL import Image
 import io
 import pdfplumber
 import pytesseract
+import os
+import stripe
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 app = FastAPI()
 
@@ -43,3 +47,25 @@ async def parse_form(file: UploadFile = File(...)):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+@app.post("/create-checkout-session")
+async def create_checkout_session():
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {"name": "Standard Plan"},
+                    "unit_amount": 900,
+                    "recurring": {"interval": "month"}
+                },
+                "quantity": 1
+            }],
+            mode="subscription",
+            success_url="https://quicksuite-ai.vercel.app/success",
+            cancel_url="https://quicksuite-ai.vercel.app/cancel",
+        )
+        return {"url": session.url}
+    except Exception as e:
+        return {"error": str(e)}
