@@ -10,12 +10,14 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import text
 
-# Import Stripe utility for creating checkout sessions
-from .stripe_utils import create_checkout_session as stripe_create_checkout_session
+from .stripe_utils import (
+    create_checkout_session as stripe_create_checkout_session,
+    cancel_subscription as stripe_cancel_subscription,
+    resume_subscription as stripe_resume_subscription,
+)
 
 app = FastAPI()
 
-# Database setup
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -59,16 +61,28 @@ async def health():
 
 @app.post("/create-checkout-session/{plan}")
 async def create_checkout(plan: str, payload: dict):
-    """Endpoint to create a Stripe checkout session for a given plan.
-
-    Args:
-        plan: The key identifying the plan (e.g., 'basic_monthly', 'basic_yearly').
-        payload: JSON body containing at least an 'email' field.
-    """
     try:
         email = payload.get("email")
         session = stripe_create_checkout_session(plan, email)
         return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/subscriptions/{subscription_id}/cancel")
+async def cancel_subscription_endpoint(subscription_id: str):
+    try:
+        result = stripe_cancel_subscription(subscription_id)
+        return {"status": "cancelled", "data": result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/subscriptions/{subscription_id}/resume")
+async def resume_subscription_endpoint(subscription_id: str):
+    try:
+        result = stripe_resume_subscription(subscription_id)
+        return {"status": "resumed", "data": result}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
