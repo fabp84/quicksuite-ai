@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from rembg import remove
 from PIL import Image
@@ -6,18 +6,21 @@ import io
 import pdfplumber
 import pytesseract
 import os
-import stripe
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import text
 
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+# Import Stripe utility for creating checkout sessions
+from .stripe_utils import create_checkout_session as stripe_create_checkout_session
+
+app = FastAPI()
+
+# Database setup
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_async_engine(DATABASE_URL, echo=False)
 async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()
 
-app = FastAPI()
 
 @app.post("/remove-bg")
 async def remove_bg(file: UploadFile = File(...)):
@@ -28,6 +31,7 @@ async def remove_bg(file: UploadFile = File(...)):
     result.save(buf, format="PNG")
     buf.seek(0)
     return StreamingResponse(buf, media_type="image/png")
+
 
 @app.post("/parse-form")
 async def parse_form(file: UploadFile = File(...)):
@@ -47,31 +51,27 @@ async def parse_form(file: UploadFile = File(...)):
             text_content = ""
     return {"text": text_content}
 
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
-@app.post("/create-checkout-session")
-async def create_checkout_session():
+
+@app.post("/create-checkout-session/{plan}")
+async def create_checkout(plan: str, payload: dict):
+    """Endpoint to create a Stripe checkout session for a given plan.
+
+    Args:
+        plan: The key identifying the plan (e.g., 'basic_monthly', 'basic_yearly').
+        payload: JSON body containing at least an 'email' field.
+    """
     try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[{
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {"name": "Standard Plan"},
-                    "unit_amount": 900,
-                    "recurring": {"interval": "month"}
-                },
-                "quantity": 1
-            }],
-            mode="subscription",
-            success_url="https://quicksuite-ai.vercel.app/success",
-            cancel_url="https://quicksuite-ai.vercel.app/cancel",
-        )
+        email = payload.get("email")
+        session = stripe_create_checkout_session(plan, email)
         return {"url": session.url}
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 @app.get("/db-test")
 async def db_test():
