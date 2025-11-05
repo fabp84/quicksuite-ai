@@ -39,3 +39,7 @@ async def parse_form(file: UploadFile = File(...)):
         except Exception:
             text = ""
     return {"text": text}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
