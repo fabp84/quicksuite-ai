@@ -6,3 +6,6 @@ pdfplumber
 pytesseract
 
 onnxruntime
+
+sqlalchemy[asyncio]
+asyncpg
