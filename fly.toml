@@ -1,4 +1,4 @@
-app = "quicksuite-ai-backend"
+app = "quicksuite-ai"
 primary_region = "iad"
 
 [build]
