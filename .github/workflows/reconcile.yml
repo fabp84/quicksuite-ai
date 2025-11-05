@@ -1,0 +1,23 @@
+name: Reconcile Stripe Subscriptions
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install stripe asyncpg
+      - name: Run reconciliation script
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/reconcile_stripe.py
