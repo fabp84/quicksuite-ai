@@ -7,17 +7,22 @@ import pdfplumber
 import pytesseract
 import os
 import stripe
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import text
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_async_engine(DATABASE_URL, echo=False)
+async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+Base = declarative_base()
 
 app = FastAPI()
 
 @app.post("/remove-bg")
 async def remove_bg(file: UploadFile = File(...)):
-    # Read the uploaded image
     img_bytes = await file.read()
     img = Image.open(io.BytesIO(img_bytes))
-    # Remove background using rembg
     result = remove(img)
     buf = io.BytesIO()
     result.save(buf, format="PNG")
@@ -26,23 +31,21 @@ async def remove_bg(file: UploadFile = File(...)):
 
 @app.post("/parse-form")
 async def parse_form(file: UploadFile = File(...)):
-    # Extract text from PDF using pdfplumber; fallback to OCR if needed
     pdf_bytes = await file.read()
-    text = ""
+    text_content = ""
     try:
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
-                    text += page_text + "\n"
+                    text_content += page_text + "\n"
     except Exception:
-        # Use OCR via pytesseract if pdfplumber fails
         try:
             image = Image.open(io.BytesIO(pdf_bytes))
-            text = pytesseract.image_to_string(image)
+            text_content = pytesseract.image_to_string(image)
         except Exception:
-            text = ""
-    return {"text": text}
+            text_content = ""
+    return {"text": text_content}
 
 @app.get("/health")
 async def health():
@@ -69,3 +72,9 @@ async def create_checkout_session():
         return {"url": session.url}
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/db-test")
+async def db_test():
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+    return {"status": "ok"}
