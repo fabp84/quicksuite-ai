@@ -22,3 +22,20 @@ def create_checkout_session(plan_key: str, email: str):
         return session
     except Exception as e:
         raise
+
+def cancel_subscription(subscription_id: str):
+    """Cancel a Stripe subscription at period end."""
+    try:
+        subscription = stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
+        return subscription
+    except Exception as e:
+        raise
+
+
+def resume_subscription(subscription_id: str):
+    """Resume a Stripe subscription (remove cancel_at_period_end)."""
+    try:
+        subscription = stripe.Subscription.modify(subscription_id, cancel_at_period_end=False)
+        return subscription
+    except Exception as e:
+        raise
