@@ -2,7 +2,7 @@
 
 export default function Pricing() {
   async function handleCheckout() {
-    const res = await fetch('/create-checkout-session', { method: 'POST' });
+    const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/create-checkout-session', { method: 'POST' });
     const data = await res.json();
     if (data.url) {
       if (typeof window !== 'undefined') {
